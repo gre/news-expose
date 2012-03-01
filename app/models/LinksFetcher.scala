@@ -1,11 +1,12 @@
 package models
 
-import play.api.cache.BasicCache
+import play.api.cache.Cache
 import play.api._
 import play.api.libs._
+import play.api.libs.ws._
 import play.api.libs.ws.Response
 import play.api.libs.concurrent._
-
+import play.api.Play.current 
 
 /**
  * LinksFetcher handle WS and cache for a LinksExtractor
@@ -28,11 +29,11 @@ object LinksFetcher {
   }
 
   // Get a cache value
-  def cacheValue(implicit r:LinksExtractor): Option[List[Link]] = cache.get[List[Link]](r.url)
+  def cacheValue(implicit r:LinksExtractor): Option[List[Link]] = cache.getAs[List[Link]](r.url)
   // Set the cache value
   def cacheValue(links:List[Link])(implicit r:LinksExtractor):List[Link] = {
     cache.set(r.url, links, r.cacheExpirationSeconds)
     links
   }
-  val cache = new BasicCache()
+  val cache = Cache
 }

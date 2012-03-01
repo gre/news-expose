@@ -1,22 +1,22 @@
 import play.api._
 import play.api.Play.current
-import akka.actor.Actor
+import akka.actor._
 import akka.actor.Actor._
-import akka.actor.Scheduler
-import java.util.concurrent.TimeUnit
+import akka.util._
+import java.util.concurrent.TimeUnit._
 
 import controllers._
 import models._
 
 object Global extends GlobalSettings {
-  val linksFetchScheduler = actorOf[LinksFetchScheduler]
+  val actorSystem = ActorSystem("fetcher")
+  val linksFetchScheduler = actorSystem.actorOf(Props[LinksFetchScheduler])
+
   override def onStart(app: Application) {
-    linksFetchScheduler.start()
-    Scheduler.restart()
-    Scheduler.schedule(linksFetchScheduler, "fetch", 1, 10, TimeUnit.SECONDS)
+    actorSystem.scheduler.schedule(Duration(1, SECONDS), Duration(10, SECONDS), linksFetchScheduler, "fetch");
+    //actorSystem.scheduler.schedule(linksFetchScheduler, "fetch", 1, 10, TimeUnit.SECONDS)
   }
   override def onStop(app: Application) {
-    linksFetchScheduler.stop()
   }
 }
 
@@ -27,7 +27,7 @@ class LinksFetchScheduler extends Actor {
     i = if(i+1 < Sources.staticSourcesList.length) i+1 else 0
     source
   }
-  val linksFetch = actorOf[LinksFetch].start()
+  val linksFetch = Global.actorSystem.actorOf(Props[LinksFetch])
 
   def receive = {
     case "fetch" => {
