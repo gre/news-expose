@@ -46,15 +46,22 @@ trait ImageOrElseExtractor extends ImageExtractor {
  */
 object ScreenshotExtractor extends ImageOrElseExtractor {
   val cacheExpirationSeconds = 10
-  val wsBase = Play.configuration.getString("ws.screenshot").getOrElse("http://localhost:8999")
+  val wsBase = Play.configuration.getString("ws.screenshot").getOrElse("http://localhost:8999/screenshot.jpg?url={url}&size={format}")
   val format = "1024x1024"
   val logger = Logger("ScreenshotExtractor")
+
+  import scala.util.matching.Regex
+
+  def replaceTemplates(text: String,
+                     templates: Map[String, String]): String = 
+    """\{([^{}]*)\}""".r replaceSomeIn ( text,  { case Regex.Groups(name) => templates get name } )
+
 
   private def encodeParameter(p:String) = URLEncoder.encode(p, "UTF-8")
 
   override def getImage(pageUrl: String): Promise[Option[Image]] = {
     super.getImage(pageUrl).flatMap(o => if (o.isDefined) Promise.pure(o) else {
-      val url = wsBase+"/screenshot.jpg?url="+encodeParameter(pageUrl)+"&size="+format
+      val url = replaceTemplates(wsBase, Map("url" -> pageUrl, "format" -> format))
       WS.url(url).head().extend(_.value match {
         case Redeemed(response) =>
           response.status match {
